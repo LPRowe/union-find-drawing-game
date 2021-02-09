@@ -1,7 +1,7 @@
 ## union-find-drawing-game
 Draw shapes and fill them in.  When shapes overlap or touch they merge together and the older / larger shape stays the same while the newer / smaller shape changes its color to match.  <br><br>
 
-If two shapes are connected by a third shape, the smaller shape takes the larger shape's color.  This is because it is more efficient to merge a smaller group of nodes with a larger group of nodes.  <br><br>
+If two shapes are connected by a third shape, the smaller shape takes the larger shape's color.  This is because it is more efficient to merge a smaller group of nodes into a larger group of nodes.  <br><br>
 
 <img src="./graphics/union_find_demo.gif">
 
