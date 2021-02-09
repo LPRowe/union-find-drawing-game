@@ -1,5 +1,5 @@
 ## union-find-drawing-game
-Draw shapes and fill them in, when shapes overlap or touch they merge together and the newer shape takes the older shape's color.
+Draw shapes and fill them in, when shapes overlap or touch they merge together and the smaller shape changes to the color of the larger shape.
 
 <img src="./graphics/union_find_demo.gif">
 
