@@ -4,6 +4,14 @@ import math
 import numpy as np
 import pygame
 
+# TODO:
+# Add a readme giving tutorial instructions and instructions for how to start
+# Add a section of readme for:
+#   1. Union Find
+#   2. How to get a line from points through recursion
+#
+# Add a click map so that both up and down arrows work as well as mouse for selecting tool (maybe)
+
 class UnionFind():
     """
     Non-standard implementation of union find.

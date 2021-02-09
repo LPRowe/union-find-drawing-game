@@ -136,10 +136,10 @@ def create_vertices(x0, y0, x1, y1, name = "rectangle"):
     return vertices
 
 if __name__ == "__main__":
-    GET_LINE = False       # Test get all linear integer points between start and end point
+    GET_LINE = True       # Test get all linear integer points between start and end point
     GET_EDGES = False      # Test get all lines for a list of vertices (outline of shape)
     FILL_SHAPE = False     # Test Fill in the shape (the star is a special case)
-    CREATE_VERTICES = True # Test Generate shape vertices from top left and bottom right bounding box points
+    CREATE_VERTICES = False # Test Generate shape vertices from top left and bottom right bounding box points
     
     if GET_LINE:
         plt.close('all')
