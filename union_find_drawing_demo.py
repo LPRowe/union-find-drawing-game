@@ -268,7 +268,10 @@ class Game():
             self.__dict__[key] = kwargs[key]
         self.SURFACE = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption('Union Find Visualization')
-
+        
+        # Set display icon
+        logo = pygame.image.load("./graphics/simple-logo.png")
+        pygame.display.set_icon(logo)
         
         self.active = True           # True when the game is running
         self.left_click_down = False # monitor status of left click
@@ -333,7 +336,8 @@ class Game():
                         self.uf.union(node, node)
                         ids = set()
                         for neighbor in Shape.get_neighbors(*node):
-                            ids.add(self.uf.union(node, neighbor))
+                            if neighbor in self.uf.id:
+                                ids.add(self.uf.union(node, neighbor))
                     self.uf.update_arr()
             
             if not self.left_click_down and mouse[0]:
@@ -345,15 +349,14 @@ class Game():
                     if mouse_pos in self.uf.id:
                         self.uf.delete_group(mouse_pos)
                 elif self.shapes[self.shape_id] == "freehand":
-                    x, y = mouse_pos
-                    vertices = [(x+i, y+j) for i in range(-2, 3) for j in range(-2, 3)]
+                    vertices = [(x0, y0), mouse_pos]
                     shape = Shape(vertices)
                     for node in shape.nodes:
-                        if 0 <= node[0] < self.WIDTH - 1 and 0 <= node[1] < self.HEIGHT - 1:
-                            self.uf.union(node, node)
-                            for neighbor in Shape.get_neighbors(*node):
-                                self.uf.union(node, neighbor)
+                        self.uf.union(node, node)
+                        for neighbor in Shape.get_neighbors(*node):
+                            self.uf.union(node, neighbor)
                     self.uf.update_arr()
+                    x0, y0 = mouse_pos
                 else:
                     # while holding left click, preview shape
                     x1, y1 = mouse_pos
@@ -376,6 +379,9 @@ class Game():
                         node = (int(node[0]), int(node[1]))
                         self.uf.union(node, node)
                         for neighbor in Shape.get_neighbors(*node):
+                            # Normally here we would have "if neighbor in self.uf.id" but we need to
+                            # thicken the lines a little to ensure all nodes in a shape have an edge
+                            # omitting this (and absorbing one non-shape node layer) fixes the issue
                             self.uf.union(node, neighbor)
                     self.uf.update_arr()
             
