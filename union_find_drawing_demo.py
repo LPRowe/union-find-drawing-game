@@ -1,32 +1,8 @@
-import pygame
 import time
 import math
-import matplotlib.pyplot as plt
+
 import numpy as np
-
-# [x] Add removal (erase and mark all groups affected by erase)
-
-# TODO:
-# [x] 1. add mouse tracking, 1 click and 2 click -> create vertices
-# [x] 2. add shape selection by keyboard input
-# [ ]    add shape icon based on current shape in top right corner
-# [x] 3. add union find data structure to keep track of which groups are connected
-# [x] 4. add color based on union find data structure group id
-# [x] 5. add eraser tool to shape selection and have union find update all related nodes
-# [x]    why cant eraser tool erase the last item drawn?
-
-# [ ] tri2 and tri3 are reversed
-
-# [ ] Change window name to Union Find Visualizer
-# [ ] Add banner that moves with current item
-
-# [SOLVED] 1. why is union find running so slow? unnecessary cycle? numpy?
-# [SOLVED] 2. why is union find not updating surface every action? seemingly random
-
-# [x] add a paint fill button (right click)
-# [ ] add color brightness adjust with mouse scroll
-
-# [x] reset the screen with escape
+import pygame
 
 class UnionFind():
     """
@@ -310,6 +286,7 @@ class Game():
         self.input_lock = -1
         
     def temporary_lock(self):
+        """Temporarily locks out keys to prevent accidental double key presses."""
         self.input_lock = time.time() + self.LOCK_TIME
         
     def run(self):
