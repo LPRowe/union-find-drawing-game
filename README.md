@@ -38,6 +38,6 @@ All of the nodes in a shape are connected, so they are given the same color to i
 
 <i>Note: There are only 13 color options. Sometimes 2 different groups will have the same color.</i><br><br>
 
-When 2 originally separate different groups of nodes become connected by the addition of a new set of nodes, then they belong to the same group.<br><br>
+When 2 originally separate groups of nodes become connected by the addition of a new set of nodes, then they belong to the same group.<br><br>
 
-This is done by merging the smaller group into the larger group.  Visually you will see the smaller group turn into the color of the larger group.  This can be observed in the GIF located above.  <br><br>
+This is done by merging the smaller group into the larger group.  Visually you will see the smaller group change to match the color of the larger group.  This is also shown in the above GIF.  <br><br>
