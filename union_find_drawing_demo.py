@@ -4,22 +4,29 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Add removal (erase and mark all groups affected by erase)
-# Delete all nodes in those groups, and re-add them back in one by one
+# [x] Add removal (erase and mark all groups affected by erase)
 
 # TODO:
-# 1. add mouse tracking, 1 click and 2 click -> create vertices
-# 2. add shape selection by keyboard input
-#    add shape icon based on current shape in top right corner
-# 3. add union find data structure to keep track of which groups are connected
-# 4. add color based on union find data structure group id
-# 5. add eraser tool to shape selection and have union find update all related nodes
+# [x] 1. add mouse tracking, 1 click and 2 click -> create vertices
+# [x] 2. add shape selection by keyboard input
+# [ ]    add shape icon based on current shape in top right corner
+# [x] 3. add union find data structure to keep track of which groups are connected
+# [x] 4. add color based on union find data structure group id
+# [x] 5. add eraser tool to shape selection and have union find update all related nodes
+# [x]    why cant eraser tool erase the last item drawn?
+
+# [ ] tri2 and tri3 are reversed
+
+# [ ] Change window name to Union Find Visualizer
+# [ ] Add banner that moves with current item
 
 # [SOLVED] 1. why is union find running so slow? unnecessary cycle? numpy?
-# [CHECK ARR UPDATE] 2. why is union find not updating surface every action? seemingly random
+# [SOLVED] 2. why is union find not updating surface every action? seemingly random
 
-# add a paint fill button (right click)
-# add color brightness adjust with mouse scroll
+# [x] add a paint fill button (right click)
+# [ ] add color brightness adjust with mouse scroll
+
+# [x] reset the screen with escape
 
 class UnionFind():
     """
@@ -46,16 +53,32 @@ class UnionFind():
         self.brightness = brightness
         self.surface = pygame.surfarray.make_surface(self.arr)
         
-    def update_arr(self):
+    def reset(self):
+        self.__init__((self.R, self.C), self.brightness, self.colors)
+        
+    def delete_group(self, node):
+        node_id = self.id[node]
+        nodes = self.group[node_id]
+        for node in nodes:
+            x, y = node
+            self.arr[x][y] = (0, 0, 0)
+            del self.id[node]
+        del self.group[node_id]
+        self.update_surface()
+        
+    def update_arr(self, node_id = None):
         """
         Updates the array for all nodes affected by most recent union.
         """
-        for node_id in self.group:
+        if node_id is not None:
             color = self.colors[node_id % len(self.colors)]
-            print(node_id, color)
             for x, y in self.group[node_id]:
                 self.arr[x][y] = color
-        print('x')
+        else:
+            for node_id in self.group:
+                color = self.colors[node_id % len(self.colors)]
+                for x, y in self.group[node_id]:
+                    self.arr[x][y] = color
         self.update_surface()
     
     def update_surface(self):
@@ -189,6 +212,23 @@ class Shape():
                         next_level.append(neighbor)
             q = next_level
         self.nodes |= visited
+        
+    def fill_region(self, x, y, union_find):
+        """
+        Creates a shape by spreading out from the location (x, y) until 
+        """
+        R, C = union_find.R, union_find.C
+        q = [(int(x), int(y))]
+        visited = set(union_find.id.keys()) | {(x, y)}
+        while q:
+            next_level = []
+            for node in q:
+                for neighbor in self.get_neighbors(*node):
+                    if neighbor not in visited and 0 <= neighbor[0] < C-1 and 0 <= neighbor[1] < R-1:
+                        visited.add(neighbor)
+                        next_level.append(neighbor)
+            q = next_level
+        self.nodes |= visited
     
 def create_vertices(x0, y0, x1, y1, name = "rectangle"):
     """
@@ -196,7 +236,7 @@ def create_vertices(x0, y0, x1, y1, name = "rectangle"):
     Current mouse position (or second click) is position x1, y1
     Calculates the vertex points for the given shape
     """
-    if name == "free":
+    if name == "line":
         return [(x0, y0), (x1, y1)]
     
     x0, x1 = sorted((x0, x1))
@@ -212,9 +252,9 @@ def create_vertices(x0, y0, x1, y1, name = "rectangle"):
         vertices = [a, b, d, c]
     elif name == "triangle1":
         vertices = [(x_midpoint, y0), c, d]
-    elif name == "triangle2":
-        vertices = [(x_midpoint, y1), a, b]
     elif name == "triangle3":
+        vertices = [(x_midpoint, y1), a, b]
+    elif name == "triangle2":
         vertices = [(x0, y_midpoint), b, d]
     elif name == "triangle4":
         vertices = [(x1, y_midpoint), a, c]
@@ -243,15 +283,21 @@ class Game():
         for key in kwargs:
             self.__dict__[key] = kwargs[key]
         self.SURFACE = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
+        pygame.display.set_caption('Union Find Visualization')
+
         
         self.active = True           # True when the game is running
         self.left_click_down = False # monitor status of left click
         
         # Cycle through shape to draw
-        self.shapes = ["rectangle", "triangle1", "triangle2", "triangle3", "triangle4", 
-                       "pentagon", "star", "free"]
+        self.shapes = ["line", "rectangle", "triangle1", "triangle2", "triangle3", "triangle4",
+                       "pentagon", "star", "freehand", "eraser"]
         self.shape_id = 0
         
+        self.banner = [pygame.image.load(f"./graphics/{i}.png") for i in range(len(self.shapes))]
+        banner_height = int(self.banner[0].get_height() * (self.WIDTH / self.banner[0].get_width()))
+        self.banner = [pygame.transform.scale(self.banner[i], (self.WIDTH, banner_height)) for i in range(len(self.banner))]
+
         # Record drawn shapes in a Union Find data structure
         self.uf = UnionFind(surface_shape = (self.WIDTH, self.HEIGHT),
                             brightness = self.BRIGHTNESS,
@@ -270,58 +316,83 @@ class Game():
         
         while self.active:
             time.sleep(self.SLEEP_TIME)
-            
             self.get_events()
-            
             keys = pygame.key.get_pressed()
             mouse = pygame.mouse.get_pressed()
             mouse_pos = pygame.mouse.get_pos()
             t = time.time()
             
-            # Change mode (shape) by up or down arrow
             if t >= self.input_lock:
                 if keys[pygame.K_UP]:
+                    # Change to next shape
                     self.shape_id = (self.shape_id + 1) % len(self.shapes)
                     self.temporary_lock()
                     print(self.shapes[self.shape_id])
                     # TODO: update icon
                 elif keys[pygame.K_DOWN]:
+                    # Change to previous shape
                     self.shape_id = (self.shape_id - 1) % len(self.shapes)
                     self.temporary_lock()
                     print(self.shapes[self.shape_id])
                     # TODO: update shape icon
+                elif keys[pygame.K_ESCAPE]:
+                    # Erase the board
+                    self.uf.reset()
+                elif mouse[2]:
+                    # Paint fill current area (right click)
+                    self.temporary_lock()
+                    shape = Shape([mouse_pos])
+                    shape.fill_region(*mouse_pos, self.uf)
+                    for node in shape.nodes:
+                        node = (int(node[0]), int(node[1]))
+                        self.uf.union(node, node)
+                        ids = set()
+                        for neighbor in Shape.get_neighbors(*node):
+                            ids.add(self.uf.union(node, neighbor))
+                    self.uf.update_arr()
             
             if not self.left_click_down and mouse[0]:
-                print('a')
                 self.left_click_down = True
                 self.temporary_lock()
                 x0, y0 = mouse_pos
             elif self.left_click_down and mouse[0]:
-                x1, y1 = mouse_pos
-                x1 = max(0, min(self.WIDTH - 2, x1))
-                y1 = max(0, min(self.HEIGHT - 2, y1))
-                vertices = create_vertices(x0, y0, x1, y1, name = self.shapes[self.shape_id])
-                self.shape_outline = vertices[:]
-                shape = Shape(vertices)
+                if self.shapes[self.shape_id] == "eraser":
+                    if mouse_pos in self.uf.id:
+                        self.uf.delete_group(mouse_pos)
+                elif self.shapes[self.shape_id] == "freehand":
+                    x, y = mouse_pos
+                    vertices = [(x+i, y+j) for i in range(-2, 3) for j in range(-2, 3)]
+                    shape = Shape(vertices)
+                    for node in shape.nodes:
+                        if 0 <= node[0] < self.WIDTH - 1 and 0 <= node[1] < self.HEIGHT - 1:
+                            self.uf.union(node, node)
+                            for neighbor in Shape.get_neighbors(*node):
+                                self.uf.union(node, neighbor)
+                    self.uf.update_arr()
+                else:
+                    # while holding left click, preview shape
+                    x1, y1 = mouse_pos
+                    x1 = max(0, min(self.WIDTH - 2, x1))
+                    y1 = max(0, min(self.HEIGHT - 2, y1))
+                    vertices = create_vertices(x0, y0, x1, y1, name = self.shapes[self.shape_id])
+                    self.shape_outline = vertices[:]
+                    shape = Shape(vertices)
             elif self.left_click_down and not mouse[0]:
-                print('c')
                 # release to draw shape; use try and catch to handle errors from too small of shape
                 self.left_click_down = False
-                self.shape_outline = set()
-                if self.shape_id <= -1: # only fill shapes do not fill star or free hand drawings
-                    try: shape.fill_shape()
-                    except: pass # Shape is too small/thin do not fill
-                print('c1')
-                # add the shape's nodes to the union find data structure
-                for node in shape.nodes:
-                    node = (int(node[0]), int(node[1]))
-                    self.uf.union(node, node)
-                    ids = set()
-                    for neighbor in Shape.get_neighbors(*node):
-                        ids.add(self.uf.union(node, neighbor))
-                self.uf.update_arr()
-                
-                print(np.sum(self.uf.arr))
+                if self.shapes[self.shape_id] != "eraser":
+                    self.shape_outline = set()
+                    if self.shape_id <= -1: # only fill shapes do not fill star or free hand drawings
+                        try: shape.fill_shape()
+                        except: pass # Shape is too small/thin do not fill
+                        
+                    # add the shape's nodes to the union find data structure
+                    for node in shape.nodes:
+                        node = (int(node[0]), int(node[1]))
+                        self.uf.union(node, node)
+                        for neighbor in Shape.get_neighbors(*node):
+                            self.uf.union(node, neighbor)
+                    self.uf.update_arr()
             
             self.draw()
     
@@ -340,31 +411,30 @@ class Game():
         # blit shapes already made and merged
         self.SURFACE.blit(self.uf.surface, (0, 0))
         
-        
         # blit oultine of shape being considered (use pygame.draw)
         if self.shape_outline:
             pygame.draw.lines(self.SURFACE, (200, 200, 200), True, 
                                self.shape_outline, 5)
             
+        # add banner indicating current setting
+        self.SURFACE.blit(self.banner[self.shape_id], (0, 0))
+        
         pygame.display.flip()
 
+a, b, c = 51, 153, 255
+color_wheel = ((c, a, a), (c, b, a), (c, c, a), (b, c, a), (a, c, a), 
+               (a, c, b), (a, c, c), (a, b, c), (a, a, c), 
+               (b, a, c), (c, a, c), (c, a, b), (b, b, b))
+
+settings = {"WIDTH": 800,               # window width
+            "HEIGHT": 800,              # window height
+            "SLEEP_TIME": 0,            # sleep between iterations to reduce the frame rate
+            "LOCK_TIME": 0.2,           # delay between allowed input actions (seconds)
+            "COLOR_WHEEL": color_wheel, # tuple of (R, G, B) colors
+            "BRIGHTNESS": 200           # pixel intensity [0, 255]
+            }
+
+g = Game(**settings)
 
 if __name__ == "__main__":
-    a, b, c = 51, 153, 255
-    color_wheel = ((c, a, a), (c, b, a), (c, c, a), (b, c, a), (a, c, a), 
-                   (a, c, b), (a, c, c), (a, b, c), (a, a, c), 
-                   (b, a, c), (c, a, c), (c, a, b), (b, b, b))
-    
-    settings = {"WIDTH": 800,
-                "HEIGHT": 800,
-                "HEADER_RATIO": 0.15,
-                "SLEEP_TIME": 0,
-                "LOCK_TIME": 0.2,
-                "COLOR_WHEEL": color_wheel,
-                "BRIGHTNESS": 200 # intensity of shapes colors [0, 255]
-                }
-    
-    g = Game(**settings)
-    g.run()
-    
-    
+    g.run()    
