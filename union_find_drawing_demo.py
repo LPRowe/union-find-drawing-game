@@ -1,8 +1,11 @@
 import time
 import math
+import bisect 
 
 import numpy as np
 import pygame
+
+import settings
 
 # TODO:
 # Add a readme giving tutorial instructions and instructions for how to start
@@ -280,6 +283,9 @@ class Game():
         self.shapes = ["line", "rectangle", "triangle1", "triangle2", "triangle3", "triangle4",
                        "pentagon", "star", "freehand", "eraser"]
         self.shape_id = 0
+        self.icon_rect = [213, 8, 684, 50] # [x0, y0, x1, y1]
+        self.shape_icons_x_loc = [212, 253, 299, 351, 396, 446, 489, 545, 600, 643] # left edge of each icon
+        
         
         self.banner = [pygame.image.load(f"./graphics/{i}.png") for i in range(len(self.shapes))]
         banner_height = int(self.banner[0].get_height() * (self.WIDTH / self.banner[0].get_width()))
@@ -310,6 +316,9 @@ class Game():
             mouse_pos = pygame.mouse.get_pos()
             t = time.time()
             
+            # =============================================================================
+            # KEY INPUTS AND RIGHT CLICK FILL     
+            # =============================================================================
             if t >= self.input_lock:
                 if keys[pygame.K_UP]:
                     # Change to next shape
@@ -340,10 +349,22 @@ class Game():
                                 ids.add(self.uf.union(node, neighbor))
                     self.uf.update_arr()
             
+            # =============================================================================
+            # SWITCHING TOOLS BY MOUSE AND DRAWING SHAPES
+            # =============================================================================
             if not self.left_click_down and mouse[0]:
-                self.left_click_down = True
-                self.temporary_lock()
                 x0, y0 = mouse_pos
+                
+                #Handle switching tools by mouse
+                if self.icon_rect[0] < x0 <= self.icon_rect[2] and self.icon_rect[1] <= y0 <= self.icon_rect[3]:
+                    self.shape_id = bisect.bisect_left(self.shape_icons_x_loc, x0) - 1
+                    print(self.shapes[self.shape_id])
+                elif 12 <= x0 <= 63 and 15 <= y0 <= 44:
+                    self.uf.reset()
+                else:
+                    self.left_click_down = True
+                    self.temporary_lock()
+                    
             elif self.left_click_down and mouse[0]:
                 if self.shapes[self.shape_id] == "eraser":
                     if mouse_pos in self.uf.id:
@@ -381,7 +402,8 @@ class Game():
                         for neighbor in Shape.get_neighbors(*node):
                             # Normally here we would have "if neighbor in self.uf.id" but we need to
                             # thicken the lines a little to ensure all nodes in a shape have an edge
-                            # omitting this (and absorbing one non-shape node layer) fixes the issue
+                            # omitting this (and absorbing one non-shape node layer) ensures that the
+                            # pixels of each shape are fully connected
                             self.uf.union(node, neighbor)
                     self.uf.update_arr()
             
@@ -412,20 +434,7 @@ class Game():
         
         pygame.display.flip()
 
-a, b, c = 51, 153, 255
-color_wheel = ((c, a, a), (c, b, a), (c, c, a), (b, c, a), (a, c, a), 
-               (a, c, b), (a, c, c), (a, b, c), (a, a, c), 
-               (b, a, c), (c, a, c), (c, a, b), (b, b, b))
-
-settings = {"WIDTH": 800,               # window width
-            "HEIGHT": 800,              # window height
-            "SLEEP_TIME": 0,            # sleep between iterations to reduce the frame rate
-            "LOCK_TIME": 0.2,           # delay between allowed input actions (seconds)
-            "COLOR_WHEEL": color_wheel, # tuple of (R, G, B) colors
-            "BRIGHTNESS": 200           # pixel intensity [0, 255]
-            }
-
-g = Game(**settings)
 
 if __name__ == "__main__":
+    g = Game(**settings.settings)
     g.run()    
